@@ -1,0 +1,29 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: Build Protobuf on multiple platforms
+
+on:
+  push:
+    branches: ['**']
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [windows-2022]
+        build_type: [Release]
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Build protobuf
+      shell: bash
+      run: |
+        ./build_protobuf.sh
+
+    - name: Debugging with tmate
+      if: matrix.os == 'windows-2022'
+      uses: mxschmitt/action-tmate@v3
+
