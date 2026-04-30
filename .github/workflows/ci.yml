@@ -23,7 +23,7 @@ jobs:
       run: |
         ./build_protobuf.sh
 
-    - name: Debugging with tmate
-      if: matrix.os == 'windows-2022'
-      uses: mxschmitt/action-tmate@v3
+    # - name: Debugging with tmate
+    #   if: matrix.os == 'windows-2022'
+    #   uses: mxschmitt/action-tmate@v3
 

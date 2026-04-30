@@ -65,24 +65,24 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
 	-Dprotobuf_BUILD_TESTS=OFF \
     -Dprotobuf_MSVC_STATIC_RUNTIME=OFF \
 	-Dprotobuf_ABSL_PROVIDER="package" \
-	-Dprotobuf_BUILD_SHARED_LIBS=OFF \
+	-Dprotobuf_BUILD_SHARED_LIBS=OFF
 
 cmake --build cmake-out --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install cmake-out --prefix install
 cd $ROOT_DIR
 
 # build and install osi
-# git clone --branch v3.8.0-rc1 --recurse-submodules https://github.com/OpenSimulationInterface/osi-cpp.git
-# mkdir osi-cpp-install
-# cd osi-cpp
-# mkdir build
-# cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
-#     -DCMAKE_CXX_STANDARD=17 \
-#     -DCMAKE_CXX_FLAGS="-I${ROOT_DIR}/osi-dependencies/abseil-cpp/dist/include" \
-#     -DCMAKE_PREFIX_PATH="${ROOT_DIR}/osi-dependencies/protobuf/install" \
-#     -DOSI_INSTALL_LIB_DIR="${ROOT_DIR}/osi-cpp-install/lib" \
-#     -DOSI_INSTALL_INCLUDE_DIR="${ROOT_DIR}/osi-cpp-install/include" \
-#     -DOSI_INSTALL_CMAKE_DIR="${ROOT_DIR}/osi-cpp-install/cmake"
+git clone --branch v3.8.0-rc1 --recurse-submodules https://github.com/OpenSimulationInterface/osi-cpp.git
+mkdir osi-cpp-install
+cd osi-cpp
+mkdir build
+cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
+    -DCMAKE_CXX_STANDARD=17 \
+    "-DCMAKE_CXX_FLAGS=-I${ROOT_DIR}/osi-dependencies/abseil-cpp/dist/include" \
+    "-DCMAKE_PREFIX_PATH=${ROOT_DIR}/osi-dependencies/protobuf/install;${ROOT_DIR}/osi-dependencies/abseil-cpp/dist" \
+    "-DOSI_INSTALL_LIB_DIR=${ROOT_DIR}/osi-cpp-install/lib" \
+    "-DOSI_INSTALL_INCLUDE_DIR=${ROOT_DIR}/osi-cpp-install/include" \
+    "-DOSI_INSTALL_CMAKE_DIR=${ROOT_DIR}/osi-cpp-install/cmake"
 
-# cmake --build build --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
-# cmake --install build
+cmake --build build --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
+cmake --install build
