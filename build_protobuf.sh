@@ -76,13 +76,32 @@ git clone --branch v3.8.0-rc1 --recurse-submodules https://github.com/OpenSimula
 mkdir osi-cpp-install
 cd osi-cpp
 mkdir build
+
+PROTO_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/protobuf/install")
+ABSL_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/abseil-cpp/dist")
+ABSL_LIB_DIR="${ABSL_PATH}/lib"
+
+PROTO_LIB_DIR="${PROTO_PATH}/lib"
+ABSL_LIB_DIR="${ABSL_PATH}/lib"
+
+# 2. Collect BOTH Abseil and Protobuf internal libs
+# This ensures we grab utf8_range.lib and utf8_validity.lib from the protobuf/install/lib folder
+ABSL_LIBS=$(ls "${ABSL_LIB_DIR}"/*.lib | xargs -n 1 basename | tr '\n' ' ')
+PROTO_INTERNAL_LIBS=$(ls "${PROTO_LIB_DIR}"/utf8_*.lib | xargs -n 1 basename | tr '\n' ' ')
+
+# 3. Combine them for the standard libraries flag
+ALL_EXTRA_LIBS="${ABSL_LIBS} ${PROTO_INTERNAL_LIBS}"
+
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
-    -DCMAKE_CXX_STANDARD=17 \
-    "-DCMAKE_CXX_FLAGS=-I${ROOT_DIR}/osi-dependencies/abseil-cpp/dist/include" \
-    "-DCMAKE_PREFIX_PATH=${ROOT_DIR}/osi-dependencies/protobuf/install;${ROOT_DIR}/osi-dependencies/abseil-cpp/dist" \
-    "-DOSI_INSTALL_LIB_DIR=${ROOT_DIR}/osi-cpp-install/lib" \
-    "-DOSI_INSTALL_INCLUDE_DIR=${ROOT_DIR}/osi-cpp-install/include" \
-    "-DOSI_INSTALL_CMAKE_DIR=${ROOT_DIR}/osi-cpp-install/cmake"
+    "-DCMAKE_CXX_STANDARD=17" \
+    "-DCMAKE_PREFIX_PATH=${PROTO_PATH}" \
+    "-DCMAKE_CXX_FLAGS=-I${ABSL_PATH}/include" \
+    "-DCMAKE_EXE_LINKER_FLAGS=/LIBPATH:\"${ABSL_LIB_DIR}\" /LIBPATH:\"${PROTO_LIB_DIR}\"" \
+    "-DCMAKE_SHARED_LINKER_FLAGS=/LIBPATH:\"${ABSL_LIB_DIR}\" /LIBPATH:\"${PROTO_LIB_DIR}\"" \
+    "-DCMAKE_CXX_STANDARD_LIBRARIES=${ALL_EXTRA_LIBS}" \
+    "-DOSI_INSTALL_LIB_DIR=$(cygpath -m "${ROOT_DIR}/osi-cpp-install/lib")" \
+    "-DOSI_INSTALL_INCLUDE_DIR=$(cygpath -m "${ROOT_DIR}/osi-cpp-install/include")" \
+    "-DOSI_INSTALL_CMAKE_DIR=$(cygpath -m "${ROOT_DIR}/osi-cpp-install/cmake")"
 
 cmake --build build --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build
