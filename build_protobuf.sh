@@ -61,7 +61,9 @@ cd protobuf
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
 	-DCMAKE_INSTALL_PREFIX=install \
 	-DCMAKE_CXX_STANDARD=17 \
-	-DCMAKE_PREFIX_PATH="../abseil-cpp/dist/;../zlib/install" \
+	-DCMAKE_PREFIX_PATH="../abseil-cpp/dist/" \
+    -Dprotobuf_WITH_ZLIB=ON \
+    -DZLIB_INCLUDE_DIR="../abseil-cpp/dist/include" \
 	-Dprotobuf_BUILD_TESTS=OFF \
     -Dprotobuf_MSVC_STATIC_RUNTIME=OFF \
 	-Dprotobuf_ABSL_PROVIDER="package" \
@@ -69,6 +71,27 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
 
 cmake --build cmake-out --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install cmake-out --prefix install
+
+echo "Merging libraries..."
+# Locate the tool (using 'vswhere' is the most professional way if available)
+LIB_EXE=$(find "/c/Program Files (x86)/Microsoft Visual Studio" -name lib.exe | grep "x64/x64" | head -n 1)
+
+if [ -z "$LIB_EXE" ]; then
+    echo "Error: lib.exe not found!"
+    exit 1
+fi
+
+PROTO_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/protobuf/install")
+PROTO_LIB_DIR=$(cygpath -m "${PROTO_PATH}/lib")
+ABSL_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/abseil-cpp/dist")
+ABSL_LIB_DIR=$(cygpath -m "${ABSL_PATH}/lib")
+
+MSYS_NO_PATHCONV=1 "$LIB_EXE" /OUT:"${PROTO_LIB_DIR}/lib/libprotobuf_fat.lib" \
+    "${PROTO_LIB_DIR}/libprotobuf.lib" \
+    "${PROTO_LIB_DIR}/utf8_range.lib" \
+    "${PROTO_LIB_DIR}/utf8_validity.lib" \
+    "${ABSL_LIB_DIR}"/absl_*.lib
+
 cd $ROOT_DIR
 
 # build and install osi
@@ -77,31 +100,19 @@ mkdir osi-cpp-install
 cd osi-cpp
 mkdir build
 
-PROTO_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/protobuf/install")
-ABSL_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/abseil-cpp/dist")
-ABSL_LIB_DIR="${ABSL_PATH}/lib"
-
-PROTO_LIB_DIR="${PROTO_PATH}/lib"
-ABSL_LIB_DIR="${ABSL_PATH}/lib"
-
-# 2. Collect BOTH Abseil and Protobuf internal libs
-# This ensures we grab utf8_range.lib and utf8_validity.lib from the protobuf/install/lib folder
-ABSL_LIBS=$(ls "${ABSL_LIB_DIR}"/*.lib | xargs -n 1 basename | tr '\n' ' ')
-PROTO_INTERNAL_LIBS=$(ls "${PROTO_LIB_DIR}"/utf8_*.lib | xargs -n 1 basename | tr '\n' ' ')
-
-# 3. Combine them for the standard libraries flag
-ALL_EXTRA_LIBS="${ABSL_LIBS} ${PROTO_INTERNAL_LIBS}"
+# 1. Define your paths (using Windows format for CMake)
+INSTALL_ROOT=$(cygpath -m "${ROOT_DIR}/osi-cpp-install")
 
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_CXX_STANDARD=17" \
     "-DCMAKE_PREFIX_PATH=${PROTO_PATH}" \
+    "-DProtobuf_LIBRARY=${PROTO_PATH}/lib/libprotobuf_fat.lib" \
     "-DCMAKE_CXX_FLAGS=-I${ABSL_PATH}/include" \
-    "-DCMAKE_EXE_LINKER_FLAGS=/LIBPATH:\"${ABSL_LIB_DIR}\" /LIBPATH:\"${PROTO_LIB_DIR}\"" \
-    "-DCMAKE_SHARED_LINKER_FLAGS=/LIBPATH:\"${ABSL_LIB_DIR}\" /LIBPATH:\"${PROTO_LIB_DIR}\"" \
-    "-DCMAKE_CXX_STANDARD_LIBRARIES=${ALL_EXTRA_LIBS}" \
-    "-DOSI_INSTALL_LIB_DIR=$(cygpath -m "${ROOT_DIR}/osi-cpp-install/lib")" \
-    "-DOSI_INSTALL_INCLUDE_DIR=$(cygpath -m "${ROOT_DIR}/osi-cpp-install/include")" \
-    "-DOSI_INSTALL_CMAKE_DIR=$(cygpath -m "${ROOT_DIR}/osi-cpp-install/cmake")"
+    "-DCMAKE_INSTALL_PREFIX=${INSTALL_ROOT}" \
+    "-DOSI_INSTALL_LIB_DIR=lib" \
+    "-DOSI_INSTALL_INCLUDE_DIR=include" \
+    "-DOSI_INSTALL_CMAKE_DIR=lib/cmake/osi"
 
+# 3. Build and Install
 cmake --build build --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build
