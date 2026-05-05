@@ -18,9 +18,9 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
-    - name: Debugging with tmate
-      if: matrix.os == 'windows-2022'
-      uses: mxschmitt/action-tmate@v3
+    # - name: Debugging with tmate
+    #   if: matrix.os == 'windows-2022'
+    #   uses: mxschmitt/action-tmate@v3
 
     - name: Build protobuf
       shell: bash
