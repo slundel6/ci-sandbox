@@ -87,27 +87,17 @@ mkdir build
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     PROTO_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/protobuf/install")
+    OSI_INSTALL_PREFIX=$(cygpath -m "${ROOT_DIR}/osi-cpp-install")
 else
     PROTO_PATH="${ROOT_DIR}/osi-dependencies/protobuf/install"
-fi
-
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-    OSI_LIB_DIR=$(cygpath -m "${ROOT_DIR}/osi-cpp-install/lib")
-    OSI_INCLUDE_DIR=$(cygpath -m "${ROOT_DIR}/osi-cpp-install/include")
-    OSI_CMAKE_DIR=$(cygpath -m "${ROOT_DIR}/osi-cpp-install/cmake")
-else
-    OSI_LIB_DIR="${ROOT_DIR}/osi-cpp-install/lib"
-    OSI_INCLUDE_DIR="${ROOT_DIR}/osi-cpp-install/include"
-    OSI_CMAKE_DIR="${ROOT_DIR}/osi-cpp-install/cmake"
+    OSI_INSTALL_PREFIX="${ROOT_DIR}/osi-cpp-install"
 fi
 
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_CXX_STANDARD=17" \
     "-DCMAKE_BUILD_TYPE=Release" \
     "-DCMAKE_PREFIX_PATH=${PROTO_PATH};${ABSL_PATH};${ZLIB_PATH}" \
-    "-DOSI_INSTALL_LIB_DIR=${OSI_LIB_DIR}" \
-    "-DOSI_INSTALL_INCLUDE_DIR=${OSI_INCLUDE_DIR}" \
-    "-DOSI_INSTALL_CMAKE_DIR=${OSI_CMAKE_DIR}"
+    "-DCMAKE_INSTALL_PREFIX=${OSI_INSTALL_PREFIX}"
 
 cmake --build build --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --config Release
