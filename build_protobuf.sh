@@ -110,7 +110,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_BUILD_TYPE=Release" \
     "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON" \
     "-Dprotobuf_MODULE_COMPATIBLE=ON" \
-    "-DProtobuf_DIR=${PROTO_PATH}/lib/cmake/protobuf" \
+    "-DCMAKE_PREFIX_PATH=${PROTO_PATH}" \
     "-DCMAKE_CXX_FLAGS=-I${ABSL_PATH}/include" \
     "-DCMAKE_INSTALL_PREFIX=${OSI_INSTALL_PREFIX}"
 
