@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-BUILD_JOBS=2
+BUILD_JOBS=8
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     BUILD_PARALLEL_ARGS=(--parallel "${BUILD_JOBS}")
 else
@@ -31,6 +31,7 @@ else
 fi
 
 ROOT_DIR=$(pwd)
+
 rm -rf osi-dependencies
 mkdir osi-dependencies
 cd osi-dependencies
@@ -47,49 +48,49 @@ cmake --install build --config Release --prefix install
 cd ..
 
 # build and install abseil
-# git clone --depth 1 --branch 20240722.1 https://github.com/abseil/abseil-cpp.git
-# cd abseil-cpp
-# mkdir build
-# cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
-# 	-DCMAKE_CXX_STANDARD=17 \
-#     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-# 	-DABSL_ENABLE_INSTALL=ON \
-# 	-DABSL_BUILD_TESTING=OFF \
-# 	-DABSL_USE_GOOGLETEST_HEAD=OFF \
-# 	-DABSL_MSVC_STATIC_RUNTIME=OFF \
-# 	-DABSL_PROPAGATE_CXX_STD=ON
+git clone --depth 1 --branch 20240722.1 https://github.com/abseil/abseil-cpp.git
+cd abseil-cpp
+mkdir build
+cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
+	-DCMAKE_CXX_STANDARD=17 \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+	-DABSL_ENABLE_INSTALL=ON \
+	-DABSL_BUILD_TESTING=OFF \
+	-DABSL_USE_GOOGLETEST_HEAD=OFF \
+	-DABSL_MSVC_STATIC_RUNTIME=OFF \
+	-DABSL_PROPAGATE_CXX_STD=ON
 
-# cmake --build build --config Release "${BUILD_PARALLEL_ARGS[@]}"
-# cmake --install build --prefix install
+cmake --build build --config Release "${BUILD_PARALLEL_ARGS[@]}"
+cmake --install build --prefix install
 # cd ..
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     ZLIB_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/zlib/install")
-    # ABSL_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/abseil-cpp/install")
+    ABSL_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/abseil-cpp/install")
 else
     ZLIB_PATH="${ROOT_DIR}/osi-dependencies/zlib/install"
-    # ABSL_PATH="${ROOT_DIR}/osi-dependencies/abseil-cpp/install"
+    ABSL_PATH="${ROOT_DIR}/osi-dependencies/abseil-cpp/install"
 fi
 
 # build and install protobuf
 git clone --depth 1 --branch v29.3 https://github.com/protocolbuffers/protobuf.git
 cd protobuf
-git submodule update --init --recursive
+# git submodule update --init --recursive
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
 	-DCMAKE_INSTALL_PREFIX=install \
 	-DCMAKE_CXX_STANDARD=17 \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-	-DCMAKE_PREFIX_PATH="${ZLIB_PATH}" \
 	-Dprotobuf_BUILD_TESTS=OFF \
     -Dprotobuf_MSVC_STATIC_RUNTIME=OFF \
-	-Dprotobuf_ABSL_PROVIDER="module" \
+	-Dprotobuf_ABSL_PROVIDER="package" \
+	-DCMAKE_PREFIX_PATH="${ZLIB_PATH};${ABSL_PATH}" \
 	-Dprotobuf_BUILD_SHARED_LIBS=OFF
 
 cmake --build cmake-out --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install cmake-out --config Release --prefix install
 cd $ROOT_DIR
-
 # build and install osi
+
 # git clone --depth 1 --branch main --recurse-submodules https://github.com/slundel6/osi-cpp.git
 git clone --branch v3.8.0-rc1 --recurse-submodules https://github.com/OpenSimulationInterface/osi-cpp.git
 mkdir osi-cpp-install
@@ -107,7 +108,10 @@ fi
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_CXX_STANDARD=17" \
     "-DCMAKE_BUILD_TYPE=Release" \
-    "-DCMAKE_PREFIX_PATH=${PROTO_PATH}" \
+    "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON" \
+    "-Dprotobuf_MODULE_COMPATIBLE=ON" \
+    "-DProtobuf_DIR=${PROTO_PATH}/lib/cmake/protobuf" \
+    "-DCMAKE_CXX_FLAGS=-I${ABSL_PATH}/include" \
     "-DCMAKE_INSTALL_PREFIX=${OSI_INSTALL_PREFIX}"
 
 cmake --build build --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
