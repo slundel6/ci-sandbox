@@ -62,7 +62,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
 
 cmake --build build --config Release "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --prefix install
-# cd ..
+cd ..
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     ZLIB_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/zlib/install")
@@ -79,6 +79,7 @@ cd protobuf
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
 	-DCMAKE_INSTALL_PREFIX=install \
 	-DCMAKE_CXX_STANDARD=17 \
+    -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 	-Dprotobuf_BUILD_TESTS=OFF \
     -Dprotobuf_MSVC_STATIC_RUNTIME=OFF \
@@ -99,9 +100,11 @@ mkdir build
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     PROTO_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/protobuf/install")
+    PROTO_CMAKE_DIR=$(cygpath -m "${ROOT_DIR}/osi-dependencies/protobuf/install/lib/cmake/protobuf")
     OSI_INSTALL_PREFIX=$(cygpath -m "${ROOT_DIR}/osi-cpp-install")
 else
     PROTO_PATH="${ROOT_DIR}/osi-dependencies/protobuf/install"
+    PROTO_CMAKE_DIR="${ROOT_DIR}/osi-dependencies/protobuf/install/lib/cmake/protobuf"
     OSI_INSTALL_PREFIX="${ROOT_DIR}/osi-cpp-install"
 fi
 
@@ -110,7 +113,8 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_BUILD_TYPE=Release" \
     "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON" \
     "-Dprotobuf_MODULE_COMPATIBLE=ON" \
-    "-DCMAKE_PREFIX_PATH=${PROTO_PATH}" \
+    "-DProtobuf_DIR=${PROTO_CMAKE_DIR}" \
+    "-DCMAKE_PREFIX_PATH=${PROTO_PATH};${ABSL_PATH};${ZLIB_PATH}" \
     "-DCMAKE_CXX_FLAGS=-I${ABSL_PATH}/include" \
     "-DCMAKE_INSTALL_PREFIX=${OSI_INSTALL_PREFIX}"
 
