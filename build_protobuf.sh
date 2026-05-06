@@ -3,7 +3,11 @@
 set -euo pipefail
 
 BUILD_JOBS=2
-BUILD_PARALLEL_ARGS=(--parallel "${BUILD_JOBS}")
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    BUILD_PARALLEL_ARGS=(--parallel "${BUILD_JOBS}")
+else
+    BUILD_PARALLEL_ARGS=(-j "${BUILD_JOBS}")
+fi
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     # Visual Studio 2022 using toolkit from Visual Studio 2017
@@ -39,7 +43,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     -DCMAKE_INSTALL_PREFIX="install" \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 cmake --build build --config Release "${BUILD_PARALLEL_ARGS[@]}"
-cmake --install build --prefix install
+cmake --install build --config Release --prefix install
 cd ..
 
 # build and install abseil
@@ -82,7 +86,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
 	-Dprotobuf_BUILD_SHARED_LIBS=OFF
 
 cmake --build cmake-out --config Release --clean-first "${BUILD_PARALLEL_ARGS[@]}"
-cmake --install cmake-out --prefix install
+cmake --install cmake-out --config Release --prefix install
 cd $ROOT_DIR
 
 # build and install osi
