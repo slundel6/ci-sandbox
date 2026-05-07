@@ -109,10 +109,15 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     PROTO_CMAKE_DIR=$(cygpath -m "${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf")
     OSI_INSTALL_PREFIX=$(cygpath -m "${ROOT_DIR}/osi-cpp-install")
     ABSL_INCLUDE_PATH=$(cygpath -m "${DEPS_INSTALL_FOLDER}/include")
+    OSI_CXX_FLAGS="-EHsc -I${ABSL_INCLUDE_PATH}"
+    if [[ "${PROTOBUF_SHARED}" == "ON" ]]; then
+        OSI_CXX_FLAGS="${OSI_CXX_FLAGS} -DPROTOBUF_USE_DLLS"
+    fi
 else
     PROTO_CMAKE_DIR="${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf"
     OSI_INSTALL_PREFIX="${ROOT_DIR}/osi-cpp-install"
     ABSL_INCLUDE_PATH="${DEPS_INSTALL_FOLDER}/include"
+    OSI_CXX_FLAGS="-I${ABSL_INCLUDE_PATH}"
 fi
 
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
@@ -122,7 +127,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-Dprotobuf_MODULE_COMPATIBLE=ON" \
     "-DProtobuf_DIR=${PROTO_CMAKE_DIR}" \
     "-DCMAKE_PREFIX_PATH=${DEPS_CMAKE_PREFIX}" \
-    "-DCMAKE_CXX_FLAGS=-I${ABSL_INCLUDE_PATH}" \
+    "-DCMAKE_CXX_FLAGS=${OSI_CXX_FLAGS}" \
     "-DCMAKE_INSTALL_PREFIX=${OSI_INSTALL_PREFIX}"
 
 cmake --build build --config "${BUILD_TYPE}" --clean-first "${BUILD_PARALLEL_ARGS[@]}"
