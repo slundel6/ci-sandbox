@@ -109,9 +109,9 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     PROTO_CMAKE_DIR=$(cygpath -m "${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf")
     OSI_INSTALL_PREFIX=$(cygpath -m "${ROOT_DIR}/osi-cpp-install")
     ABSL_INCLUDE_PATH=$(cygpath -m "${DEPS_INSTALL_FOLDER}/include")
-    OSI_CXX_FLAGS="-EHsc -I${ABSL_INCLUDE_PATH}"
+    OSI_CXX_FLAGS="/EHsc /I${ABSL_INCLUDE_PATH}"
     if [[ "${PROTOBUF_SHARED}" == "ON" ]]; then
-        OSI_CXX_FLAGS="${OSI_CXX_FLAGS} -DPROTOBUF_USE_DLLS"
+        OSI_CXX_FLAGS="${OSI_CXX_FLAGS} /DPROTOBUF_USE_DLLS /DABSL_CONSUME_DLL"
     fi
 else
     PROTO_CMAKE_DIR="${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf"
