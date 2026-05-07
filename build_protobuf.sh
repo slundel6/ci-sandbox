@@ -127,8 +127,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-Dprotobuf_MODULE_COMPATIBLE=ON" \
     "-DProtobuf_DIR=${PROTO_CMAKE_DIR}" \
     "-DCMAKE_PREFIX_PATH=${DEPS_CMAKE_PREFIX}" \
-    "-DCMAKE_CXX_FLAGS_RELEASE=${OSI_CXX_FLAGS}" \
-    "-DCMAKE_CXX_FLAGS_DEBUG=${OSI_CXX_FLAGS}" \
+    "-DCMAKE_CXX_FLAGS=${OSI_CXX_FLAGS}" \
     "-DCMAKE_INSTALL_PREFIX=${OSI_INSTALL_PREFIX}"
 
 cmake --build build --config "${BUILD_TYPE}" --clean-first "${BUILD_PARALLEL_ARGS[@]}"

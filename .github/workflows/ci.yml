@@ -20,10 +20,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # - name: Debugging with tmate
-    #   if: matrix.os == 'windows-2022'
-    #   uses: mxschmitt/action-tmate@v3
-
     - name: Build protobuf
       shell: bash
       env:
@@ -32,4 +28,7 @@ jobs:
       run: |
         ./build_protobuf.sh
 
+    - name: Debugging with tmate
+      if: matrix.os == 'windows-2022'
+      uses: mxschmitt/action-tmate@v3
 
