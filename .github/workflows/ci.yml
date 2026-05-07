@@ -31,9 +31,9 @@ jobs:
       run: |
         ./build_protobuf.sh
 
-    - name: Debugging with tmate
-      if: ${{ always() && matrix.os == 'windows-2022' && steps.build_step.outcome == 'failure' }}
-      uses: mxschmitt/action-tmate@v3
+    # - name: Debugging with tmate
+    #   if: ${{ always() && matrix.os == 'windows-2022' && steps.build_step.outcome == 'failure' }}
+    #   uses: mxschmitt/action-tmate@v3
 
     - name: Fail job if build failed
       if: ${{ steps.build_step.outcome == 'failure' }}
