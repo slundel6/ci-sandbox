@@ -16,6 +16,8 @@ if [[ "${PROTOBUF_SHARED}" != "ON" && "${PROTOBUF_SHARED}" != "OFF" ]]; then
     exit 1
 fi
 
+ABSL_SHARED="${PROTOBUF_SHARED}"
+
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     BUILD_PARALLEL_ARGS=(--parallel "${BUILD_JOBS}")
 else
@@ -36,21 +38,28 @@ else
 fi
 
 ROOT_DIR=$(pwd)
+DEPS_INSTALL_FOLDER="${ROOT_DIR}/osi-dependencies/install"
 
 rm -rf osi-dependencies
-mkdir osi-dependencies
+mkdir -p "${DEPS_INSTALL_FOLDER}"
 cd osi-dependencies
+
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    DEPS_CMAKE_PREFIX=$(cygpath -m "${DEPS_INSTALL_FOLDER}")
+else
+    DEPS_CMAKE_PREFIX="${DEPS_INSTALL_FOLDER}"
+fi
 
 # build and install zlib
 git clone --depth 1 --branch v1.3.1 https://github.com/madler/zlib.git
 cd zlib
-mkdir build && mkdir install
+mkdir build
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
-    -DCMAKE_INSTALL_PREFIX="install" \
+    -DCMAKE_INSTALL_PREFIX="${DEPS_CMAKE_PREFIX}" \
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 cmake --build build --config "${BUILD_TYPE}" "${BUILD_PARALLEL_ARGS[@]}"
-cmake --install build --config "${BUILD_TYPE}" --prefix install
+cmake --install build --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
 cd "${ROOT_DIR}/osi-dependencies"
 
 # build and install abseil
@@ -61,6 +70,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
 	-DCMAKE_CXX_STANDARD=17 \
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    -DBUILD_SHARED_LIBS="${ABSL_SHARED}" \
 	-DABSL_ENABLE_INSTALL=ON \
 	-DABSL_BUILD_TESTING=OFF \
 	-DABSL_USE_GOOGLETEST_HEAD=OFF \
@@ -68,33 +78,25 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
 	-DABSL_PROPAGATE_CXX_STD=ON
 
 cmake --build build --config "${BUILD_TYPE}" "${BUILD_PARALLEL_ARGS[@]}"
-cmake --install build --config "${BUILD_TYPE}" --prefix install
+cmake --install build --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
 cd "${ROOT_DIR}/osi-dependencies"
-
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-    ZLIB_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/zlib/install")
-    ABSL_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/abseil-cpp/install")
-else
-    ZLIB_PATH="${ROOT_DIR}/osi-dependencies/zlib/install"
-    ABSL_PATH="${ROOT_DIR}/osi-dependencies/abseil-cpp/install"
-fi
 
 # build and install protobuf
 git clone --depth 1 --branch v29.3 https://github.com/protocolbuffers/protobuf.git
 cd protobuf
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
-	-DCMAKE_INSTALL_PREFIX=install \
+    -DCMAKE_INSTALL_PREFIX="${DEPS_CMAKE_PREFIX}" \
 	-DCMAKE_CXX_STANDARD=17 \
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 	-Dprotobuf_BUILD_TESTS=OFF \
     -Dprotobuf_MSVC_STATIC_RUNTIME=OFF \
 	-Dprotobuf_ABSL_PROVIDER="package" \
-	-DCMAKE_PREFIX_PATH="${ZLIB_PATH};${ABSL_PATH}" \
+    -DCMAKE_PREFIX_PATH="${DEPS_CMAKE_PREFIX}" \
     -Dprotobuf_BUILD_SHARED_LIBS="${PROTOBUF_SHARED}"
 
 cmake --build cmake-out --config "${BUILD_TYPE}" --clean-first "${BUILD_PARALLEL_ARGS[@]}"
-cmake --install cmake-out --config "${BUILD_TYPE}" --prefix install
+cmake --install cmake-out --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
 cd "${ROOT_DIR}"
 
 # build and install osi
@@ -104,15 +106,13 @@ cd osi-cpp
 mkdir build
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-    PROTO_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/protobuf/install")
-    PROTO_CMAKE_DIR=$(cygpath -m "${ROOT_DIR}/osi-dependencies/protobuf/install/lib/cmake/protobuf")
+    PROTO_CMAKE_DIR=$(cygpath -m "${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf")
     OSI_INSTALL_PREFIX=$(cygpath -m "${ROOT_DIR}/osi-cpp-install")
-    ABSL_INCLUDE_PATH=$(cygpath -m "${ROOT_DIR}/osi-dependencies/abseil-cpp/install/include")
+    ABSL_INCLUDE_PATH=$(cygpath -m "${DEPS_INSTALL_FOLDER}/include")
 else
-    PROTO_PATH="${ROOT_DIR}/osi-dependencies/protobuf/install"
-    PROTO_CMAKE_DIR="${ROOT_DIR}/osi-dependencies/protobuf/install/lib/cmake/protobuf"
+    PROTO_CMAKE_DIR="${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf"
     OSI_INSTALL_PREFIX="${ROOT_DIR}/osi-cpp-install"
-    ABSL_INCLUDE_PATH="${ROOT_DIR}/osi-dependencies/abseil-cpp/install/include"
+    ABSL_INCLUDE_PATH="${DEPS_INSTALL_FOLDER}/include"
 fi
 
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
@@ -121,7 +121,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON" \
     "-Dprotobuf_MODULE_COMPATIBLE=ON" \
     "-DProtobuf_DIR=${PROTO_CMAKE_DIR}" \
-    "-DCMAKE_PREFIX_PATH=${PROTO_PATH};${ABSL_PATH};${ZLIB_PATH}" \
+    "-DCMAKE_PREFIX_PATH=${DEPS_CMAKE_PREFIX}" \
     "-DCMAKE_CXX_FLAGS=-I${ABSL_INCLUDE_PATH}" \
     "-DCMAKE_INSTALL_PREFIX=${OSI_INSTALL_PREFIX}"
 
