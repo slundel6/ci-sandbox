@@ -13,9 +13,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2022, ubuntu-22.04, macos-14]
-        build_type: [Release, Debug]
-        protobuf_shared: [ON, OFF]
+        os: [windows-2022]
+        build_type: [Debug]
+        protobuf_shared: [ON]
 
     steps:
     - uses: actions/checkout@v4

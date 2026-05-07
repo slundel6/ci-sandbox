@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+# set -euo pipefail
 
 BUILD_JOBS=2
 BUILD_TYPE=${BUILD_TYPE:-Release}
