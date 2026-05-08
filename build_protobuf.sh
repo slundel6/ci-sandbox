@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# set -euo pipefail
+set -euo pipefail
 
 BUILD_JOBS=2
 BUILD_TYPE=${BUILD_TYPE:-Release}
@@ -58,6 +58,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     -DCMAKE_INSTALL_PREFIX="${DEPS_CMAKE_PREFIX}" \
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+
 cmake --build build --config "${BUILD_TYPE}" "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
 cd "${ROOT_DIR}/osi-dependencies"
@@ -70,7 +71,6 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
 	-DCMAKE_CXX_STANDARD=17 \
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-    -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON \
     -DBUILD_SHARED_LIBS="${ABSL_SHARED}" \
 	-DABSL_ENABLE_INSTALL=ON \
 	-DABSL_BUILD_TESTING=OFF \
