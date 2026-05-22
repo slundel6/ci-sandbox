@@ -83,6 +83,10 @@ jobs:
       shell: bash
       run: echo '-1' | sudo tee /proc/sys/kernel/perf_event_paranoid
 
+    - name: Run scenario to prepare call stack
+      shell: bash
+      run: ./build/EnvironmentSimulator/Applications/esmini --osc resources/xosc/cut-in.xosc --fixed_timestep 0.025 --osi_file --record sim.dat --headless
+
     - name: Run profiling
       shell: bash
       working-directory: samply
