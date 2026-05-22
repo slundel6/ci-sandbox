@@ -74,7 +74,7 @@ jobs:
     - name: Run profiling
       shell: bash
       working-directory: samply
-      run: ./target/release/samply record --presymbolicate --symbol-dir=../build/EnvironmentSimulator/Applications/esmini ../build/EnvironmentSimulator/Applications/esmini/esmini --osc ../resources/xosc/highway_merge.xosc --fixed_timestep 0.025 --osi_file ../ground_truth.gt --record ../sim.dat --headless
+      run: ./target/release/samply record --save-only -o prof.json --presymbolicate --symbol-dir=../build/EnvironmentSimulator/Applications/esmini ../build/EnvironmentSimulator/Applications/esmini/esmini --osc ../resources/xosc/highway_merge.xosc --fixed_timestep 0.025 --osi_file ../ground_truth.gt --record ../sim.dat --headless
 
     - name: Publish profiling results
       id: publish_profile
