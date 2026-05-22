@@ -12,7 +12,7 @@ env:
   esmini_branch: dev
   samply_repo: mstange/samply
   samply_branch: bccaae62b8fbbdb69dd1352accad1b92a1502f29
-  scenarios: [resources/xosc/cut_in.xosc, resources/xosc/highway_merge.xosc, resources/xosc/follow_ghost.xosc]
+  scenarios: "resources/xosc/cut_in.xosc, resources/xosc/highway_merge.xosc, resources/xosc/follow_ghost.xosc"
 
 jobs:
   profiling:
