@@ -12,6 +12,7 @@ env:
   esmini_branch: dev
   samply_repo: mstange/samply
   samply_branch: bccaae62b8fbbdb69dd1352accad1b92a1502f29
+  scenarios: [resources/xosc/cut_in.xosc, resources/xosc/highway_merge.xosc, resources/xosc/follow_ghost.xosc]
 
 jobs:
   profiling:
@@ -77,38 +78,67 @@ jobs:
     - name: Run profiling
       shell: bash
       working-directory: samply
-      run: ./target/release/samply record --save-only -o prof.json --presymbolicate --symbol-dir=../build/EnvironmentSimulator/Applications/esmini ../build/EnvironmentSimulator/Applications/esmini/esmini --osc ../resources/xosc/highway_merge.xosc --fixed_timestep 0.025 --osi_file ../ground_truth.gt --record ../sim.dat --headless
+      run: |
+        set -euo pipefail
+        mkdir -p profiles
+        scenarios='${{ env.scenarios }}'
+        scenarios="${scenarios#[}"
+        scenarios="${scenarios%]}"
+        IFS=',' read -ra items <<< "$scenarios"
+        for s in "${items[@]}"; do
+          scenario="$(echo "$s" | xargs)"
+          name="$(basename "$scenario" .xosc)"
+          ./target/release/samply record --save-only -o "profiles/${name}.json" --presymbolicate --symbol-dir=../build/EnvironmentSimulator/Applications/esmini ../build/EnvironmentSimulator/Applications/esmini/esmini --osc "../$scenario" --fixed_timestep 0.025 --osi_file ../ground_truth.gt --record ../sim.dat --headless
+          gzip -f "profiles/${name}.json"
+        done
 
-    - name: Package profiles
-      shell: bash
-      working-directory: samply
-      run: gzip -f prof.json
-
-    - name: Publish profiling results
+    - name: Upload profiling results
       id: publish_profile
       shell: bash
       working-directory: samply
       run: |
-        JWT_RESPONSE=$(curl -s -X POST --data-binary @prof.json.gz -H 'Accept: application/vnd.firefox-profiler+json;version=1.0' https://api.profiler.firefox.com/compressed-store)
-        PROFILE_TOKEN=$(echo "$JWT_RESPONSE" | cut -d'.' -f2 | base64 --decode 2>/dev/null | grep -oP '"profileToken":"\K[^"]+')
-        LINK="https://profiler.firefox.com/public/$PROFILE_TOKEN"
-        echo "profile_link=$LINK" >> "$GITHUB_OUTPUT"
+        set -euo pipefail
+        published=0
+        failed=0
+        echo "## Profiling links" > profiles/profiler-links.md
+        for f in profiles/*.json.gz; do
+          name="$(basename "$f" .json.gz)"
+          rsp="$(curl -fsS -X POST --data-binary @"$f" -H 'Accept: application/vnd.firefox-profiler+json;version=1.0' https://api.profiler.firefox.com/compressed-store || true)"
+          token="$(printf '%s' "$rsp" | sed -n 's/.*"profileToken":"\([^"]*\)".*/\1/p' | head -n1)"
+          if [[ -z "$token" ]]; then
+            payload="$(printf '%s' "$rsp" | cut -d'.' -f2 | tr '_-' '/+')"
+            while (( ${#payload} % 4 != 0 )); do payload+="="; done
+            decoded="$(printf '%s' "$payload" | base64 -d 2>/dev/null || true)"
+            token="$(printf '%s' "$decoded" | sed -n 's/.*"profileToken":"\([^"]*\)".*/\1/p' | head -n1)"
+          fi
+          if [[ -n "$token" ]]; then
+            echo "- [$name](https://profiler.firefox.com/public/$token)" >> profiles/profiler-links.md
+            published=$((published + 1))
+          else
+            echo "- $name (publish failed)" >> profiles/profiler-links.md
+            failed=$((failed + 1))
+          fi
+        done
+        echo "published=$published" >> "$GITHUB_OUTPUT"
+        echo "failed=$failed" >> "$GITHUB_OUTPUT"
 
     - name: Upload Firefox profile artifact
       id: upload_profile
       uses: actions/upload-artifact@v4
       with:
-        name: firefox-profile
-        path: samply/prof.json.gz
+        name: firefox-profiles
+        path: |
+          samply/profiles/*.json.gz
+          samply/profiles/profiler-links.md
         if-no-files-found: error
 
     - name: Publish links
       shell: bash
       run: |
+        cat samply/profiles/profiler-links.md >> "$GITHUB_STEP_SUMMARY"
         cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-        ## Profiling links
-        - [Open in Firefox Profiler](${{ steps.publish_profile.outputs.profile_link }})
+
+        Published: ${{ steps.publish_profile.outputs.published }}, Failed: ${{ steps.publish_profile.outputs.failed }}
         - [Download uploaded profile artifact](${{ steps.upload_profile.outputs.artifact-url }})
-        - [Run artifacts page](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         EOF
 
