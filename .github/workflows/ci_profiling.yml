@@ -32,6 +32,10 @@ jobs:
         submodules: true
         fetch-depth: 0
 
+    - name: Setup dependencies
+      working-directory: esmini
+      uses: ./.github/actions/setup_tools_shared
+
     - name: Cache
       uses: actions/cache@v4
       with:

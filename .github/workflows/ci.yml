@@ -2,8 +2,8 @@
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
 name: Build Protobuf on multiple platforms
 
-on:
-  push:
+# on:
+#   push:
     # branches: ['**']
 
 jobs:
