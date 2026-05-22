@@ -33,6 +33,7 @@ jobs:
         fetch-depth: 0
 
     - name: Setup dependencies
+      working-directory: esmini
       uses: ./esmini/.github/actions/setup_tools_shared
 
     - name: Cache
