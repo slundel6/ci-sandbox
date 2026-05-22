@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Setup
 set -euo pipefail
 
 BUILD_JOBS=8
@@ -23,17 +24,17 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]] && [[ "${ABSL_SHARED}" == 
 fi
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    # Parallel build argument
     BUILD_PARALLEL_ARGS=(--parallel "${BUILD_JOBS}")
-else
-    BUILD_PARALLEL_ARGS=(-j "${BUILD_JOBS}")
-fi
 
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     # Visual Studio 2022 using toolkit from Visual Studio 2017
     GENERATOR=("Visual Studio 17 2022")
     GENERATOR_TOOLSET="v142"
     GENERATOR_ARGUMENTS="-A x64 -T ${GENERATOR_TOOLSET}"
-elif [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "linux-gnu"* ]]; then
+elif [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
+    # Parallel build argument
+    BUILD_PARALLEL_ARGS=(-j "${BUILD_JOBS}")
+
     # Unix Makefiles (for Ubuntu and other Linux systems)
     GENERATOR=("Unix Makefiles")
     GENERATOR_ARGUMENTS=""
@@ -43,6 +44,7 @@ fi
 
 ROOT_DIR=$(pwd)
 DEPS_INSTALL_FOLDER="${ROOT_DIR}/osi-dependencies/install"
+OSI_INSTALL_FOLDER="${ROOT_DIR}/osi-cpp-install"
 
 rm -rf osi-dependencies
 mkdir -p "${DEPS_INSTALL_FOLDER}"
@@ -53,6 +55,8 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
 else
     DEPS_CMAKE_PREFIX="${DEPS_INSTALL_FOLDER}"
 fi
+
+### Building
 
 # build and install zlib
 git clone --depth 1 --branch v1.3.1 https://github.com/madler/zlib.git
@@ -65,7 +69,9 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
 
 cmake --build build --config "${BUILD_TYPE}" "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
+rm "${DEPS_CMAKE_PREFIX}/lib/libz.so"*
 cd "${ROOT_DIR}/osi-dependencies"
+
 
 # build and install abseil
 git clone --depth 1 --branch 20240722.1 https://github.com/abseil/abseil-cpp.git
@@ -103,27 +109,26 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
 
 cmake --build cmake-out --config "${BUILD_TYPE}" --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install cmake-out --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
-cd "${ROOT_DIR}"
+cd "$ROOT_DIR"
 
 # build and install osi
 git clone --branch v3.8.0-rc1 --recurse-submodules https://github.com/OpenSimulationInterface/osi-cpp.git
-mkdir osi-cpp-install
+mkdir -p "$OSI_INSTALL_FOLDER"
 cd osi-cpp
 mkdir build
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     PROTO_CMAKE_DIR=$(cygpath -m "${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf")
-    OSI_INSTALL_PREFIX=$(cygpath -m "${ROOT_DIR}/osi-cpp-install")
+    OSI_INSTALL_PREFIX=$(cygpath -m "${OSI_INSTALL_FOLDER}")
     ABSL_INCLUDE_PATH=$(cygpath -m "${DEPS_INSTALL_FOLDER}/include")
     OSI_CXX_FLAGS_RELEASE="-EHsc -I${ABSL_INCLUDE_PATH}"
     OSI_CXX_FLAGS_DEBUG="-EHsc -I${ABSL_INCLUDE_PATH}"
     if [[ "${PROTOBUF_SHARED}" == "ON" ]]; then
-        OSI_CXX_FLAGS_RELEASE="${OSI_CXX_FLAGS_RELEASE} -DPROTOBUF_USE_DLLS"
-        OSI_CXX_FLAGS_DEBUG="${OSI_CXX_FLAGS_DEBUG} -DPROTOBUF_USE_DLLS"
+        OSI_CXX_FLAGS="${OSI_CXX_FLAGS} -DPROTOBUF_USE_DLLS -DABSL_CONSUME_DLL"
     fi
 else
     PROTO_CMAKE_DIR="${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf"
-    OSI_INSTALL_PREFIX="${ROOT_DIR}/osi-cpp-install"
+    OSI_INSTALL_PREFIX="${OSI_INSTALL_FOLDER}"
     ABSL_INCLUDE_PATH="${DEPS_INSTALL_FOLDER}/include"
     OSI_CXX_FLAGS_RELEASE="-I${ABSL_INCLUDE_PATH}"
     OSI_CXX_FLAGS_DEBUG="-I${ABSL_INCLUDE_PATH}"
@@ -142,3 +147,113 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
 
 cmake --build build --config "${BUILD_TYPE}" --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --config "${BUILD_TYPE}"
+
+cd "$ROOT_DIR"
+
+### Staging
+mkdir -p staging && cd staging
+
+if [[ "$PROTOBUF_SHARED" == "OFF" ]]; then
+    LIB_DIR_NAME="lib"
+else
+    LIB_DIR_NAME="lib-dyn"
+fi
+
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    STAGING_DIR="v10"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    STAGING_DIR="linux"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    STAGING_DIR="mac"
+else
+    echo "Unknown OSTYPE: $OSTYPE"
+fi
+
+STAGING_DIR_LIB="${STAGING_DIR}/${LIB_DIR_NAME}/${BUILD_TYPE,}"
+STAGING_DIR_INCLUDE="${STAGING_DIR}/include"
+STAGING_DIR_DEPENDENCIES_LIB="${STAGING_DIR}/deps/${BUILD_TYPE,}"
+
+mkdir -p "$STAGING_DIR_LIB"
+mkdir -p "$STAGING_DIR_INCLUDE"
+mkdir -p "$STAGING_DIR_DEPENDENCIES_LIB"
+
+## Copy include files
+cp -r "${DEPS_INSTALL_FOLDER}/include/"* "$STAGING_DIR_INCLUDE"
+cp -r "${OSI_INSTALL_FOLDER}/include/osi3/"* "$STAGING_DIR_INCLUDE"
+
+## Copy libs
+if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
+    DYN_EXT="so"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        DYN_EXT="dylib"
+    fi
+
+    if [[ "$PROTOBUF_SHARED" == "OFF" ]]; then
+        if [[ "$BUILD_TYPE" == "Release" ]]; then
+            cp "${DEPS_INSTALL_FOLDER}/lib/libabsl_"*.a "${DEPS_INSTALL_FOLDER}/lib/libupb.a" "${DEPS_INSTALL_FOLDER}/lib/libutf8"*.a "${DEPS_INSTALL_FOLDER}/lib/libz.a" "${STAGING_DIR_DEPENDENCIES_LIB}"
+        else
+            cp "${DEPS_INSTALL_FOLDER}/lib/libabsl_"*.a "${DEPS_INSTALL_FOLDER}/lib/libupbd.a" "${DEPS_INSTALL_FOLDER}/lib/libutf8"*.a "${DEPS_INSTALL_FOLDER}/lib/libz.a" "${STAGING_DIR_DEPENDENCIES_LIB}"
+        fi
+    fi
+
+
+    # Dependency libs (abseil, upb, utf8 and libz), always .a
+    if [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Release" ]]; then
+        # Linux static release libs
+        cp "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface_pic.a" "$STAGING_DIR_LIB"
+        cp "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.a" "$STAGING_DIR_LIB"
+    elif [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Debug" ]]; then
+        # Linux static debug libs
+        cp "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface_pic.a" "$STAGING_DIR_LIB"
+        cp "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.a" "$STAGING_DIR_LIB"
+    elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Release" ]]; then
+        # Linux dynamic release libs
+        cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface.${DYN_EXT}"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.${DYN_EXT}"* "$STAGING_DIR_LIB"
+    elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Debug" ]]; then
+        # Linux dynamic release libs
+        cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface.${DYN_EXT}"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.${DYN_EXT}"* "$STAGING_DIR_LIB"
+    else
+        echo "Unknown combination of PROTOBUF_SHARED=$PROTOBUF_SHARED and BUILD_TYPE=${BUILD_TYPE}"
+    fi
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    # Dependency libs (abseil, upb, utf8 and libz), always .a
+    if [[ "$PROTOBUF_SHARED" == "OFF" ]]; then
+        cp "${DEPS_INSTALL_FOLDER}/lib/absl_"*.lib "${DEPS_INSTALL_FOLDER}/lib/utf8"*.lib "${STAGING_DIR_DEPENDENCIES_LIB}"
+    fi
+
+    if [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Release" ]]; then
+        # Windows static release libs
+        cp "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface_static.lib" "$STAGING_DIR_LIB"
+        cp "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.lib" "$STAGING_DIR_LIB"
+    elif [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Debug" ]]; then
+        # Windows static debug libs
+        cp "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface_pic.lib" "$STAGING_DIR_LIB"
+        cp "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.lib" "$STAGING_DIR_LIB"
+    elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Release" ]]; then
+        # Windows dynamic release libs
+        cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.lib"* "$STAGING_DIR_LIB"
+        cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.dll"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.lib"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.dll"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.lib"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.dll"* "$STAGING_DIR_LIB"
+    elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Debug" ]]; then
+        # Windows dynamic release libs
+        cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.lib"* "$STAGING_DIR_LIB"
+        cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.dll"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.lib"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.dll"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.lib"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.dll"* "$STAGING_DIR_LIB"
+    else
+        echo "Unknown combination of PROTOBUF_SHARED=$PROTOBUF_SHARED and BUILD_TYPE=${BUILD_TYPE}"
+    fi
+else
+    echo "Unexpected OSTYPE $OSTYPE"
+fi
+
+
+
+

@@ -4,11 +4,12 @@ name: Build Protobuf on multiple platforms
 
 on:
   push:
-    branches: ['**']
+    branches: ['stable_state']
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 360
 
     strategy:
       fail-fast: false
@@ -20,11 +21,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # - name: Debugging with tmate
-    #   if: matrix.os == 'windows-2022'
-    #   uses: mxschmitt/action-tmate@v3
-
     - name: Build protobuf
+      id: build_step
+      continue-on-error: true
       shell: bash
       env:
         BUILD_TYPE: ${{ matrix.build_type }}
@@ -32,4 +31,14 @@ jobs:
       run: |
         ./build_protobuf.sh
 
+    # - name: Debugging with tmate
+    #   if: ${{ always() && matrix.os == 'windows-2022' && steps.build_step.outcome == 'failure' }}
+    #   uses: mxschmitt/action-tmate@v3
+
+    - name: Fail job if build failed
+      if: ${{ steps.build_step.outcome == 'failure' }}
+      shell: bash
+      run: |
+        echo "Build step failed; preserving failed job status after optional tmate session."
+        exit 1
 
