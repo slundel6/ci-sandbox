@@ -28,33 +28,29 @@ jobs:
       with:
         repository: ${{ env.esmini_repo }}
         ref: ${{ env.esmini_branch }}
-        path: esmini
         submodules: true
         fetch-depth: 0
 
     - name: Setup dependencies
-      uses: ./esmini/.github/actions/setup_tools_shared
-      working-directory: esmini
+      uses: ./.github/actions/setup_tools_shared
 
     - name: Cache
       uses: actions/cache@v4
       with:
         path: |
-          esmini/externals/googletest
-          esmini/externals/osg
-          esmini/externals/osi
-          esmini/externals/sumo
-          esmini/resources/models
+          externals/googletest
+          externals/osg
+          externals/osi
+          externals/sumo
+          resources/models
         key: ${{ runner.os }}-external-resources
 
     - name: CMake Configure - Ubuntu
       if: runner.os == 'Linux'
       shell: bash
-      working-directory: esmini
       run: cmake . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_OSI=ON -DUSE_GTEST=OFF -DUSE_OSG=ON -DUSE_SUMO=OFF -DUSE_IMPLOT=OFF -DBUILD_EXAMPLES=OFF
 
     - name: CMake Build
-      working-directory: esmini
       run: cmake --build build --config ${{ matrix.configuration }} --target esmini -j 2
 
     - name: Checkout samply
@@ -78,7 +74,7 @@ jobs:
     - name: Run profiling
       shell: bash
       working-directory: samply
-      run: ./target/release/samply record --presymbolicate --symbol-dir=../esmini/build/EnvironmentSimulator/Applications/esmini ../esmini/build/EnvironmentSimulator/Applications/esmini/esmini --osc ../esmini/resources/xosc/highway_merge.xosc --fixed_timestep 0.025 --osi_file ../esmini/ground_truth.gt --record ../esmini/sim.dat --headless
+      run: ./target/release/samply record --presymbolicate --symbol-dir=../build/EnvironmentSimulator/Applications/esmini ../build/EnvironmentSimulator/Applications/esmini/esmini --osc ../resources/xosc/highway_merge.xosc --fixed_timestep 0.025 --osi_file ../ground_truth.gt --record ../sim.dat --headless
 
     - name: Publish profiling results
       id: publish_profile
