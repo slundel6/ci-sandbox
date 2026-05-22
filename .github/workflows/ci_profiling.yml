@@ -31,10 +31,8 @@ jobs:
         submodules: true
         fetch-depth: 0
 
-    - name: Setup dependencies
-      uses: ./.github/actions/setup_tools_shared
-
-    - name: Cache
+    - name: Cache externals/resources
+      id: cache_externals
       uses: actions/cache@v4
       with:
         path: |
@@ -43,7 +41,12 @@ jobs:
           externals/osi
           externals/sumo
           resources/models
-        key: ${{ runner.os }}-external-resources
+        key: ${{ runner.os }}-external-resources-v1
+        restore-keys: |
+          ${{ runner.os }}-external-resources-
+
+    - name: Setup dependencies
+      uses: ./.github/actions/setup_tools_shared
 
     - name: CMake Configure - Ubuntu
       if: runner.os == 'Linux'
@@ -75,6 +78,11 @@ jobs:
       shell: bash
       working-directory: samply
       run: ./target/release/samply record --save-only -o prof.json --presymbolicate --symbol-dir=../build/EnvironmentSimulator/Applications/esmini ../build/EnvironmentSimulator/Applications/esmini/esmini --osc ../resources/xosc/highway_merge.xosc --fixed_timestep 0.025 --osi_file ../ground_truth.gt --record ../sim.dat --headless
+
+    - name: Package profiles
+      shell: bash
+      working-directory: samply
+      run: gzip -f prof.json
 
     - name: Publish profiling results
       id: publish_profile
