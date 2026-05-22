@@ -12,7 +12,7 @@ env:
   esmini_branch: dev
   samply_repo: mstange/samply
   samply_branch: bccaae62b8fbbdb69dd1352accad1b92a1502f29
-  scenarios: "resources/xosc/cut_in.xosc, resources/xosc/highway_merge.xosc, resources/xosc/follow_ghost.xosc"
+  scenarios: "resources/xosc/cut-in.xosc, resources/xosc/highway_merge.xosc, resources/xosc/follow_ghost.xosc"
 
 jobs:
   profiling:
@@ -66,7 +66,15 @@ jobs:
         fetch-depth: 0
         path: samply
 
+    - name: Cache samply binary
+      id: cache_samply_bin
+      uses: actions/cache@v4
+      with:
+        path: samply/target/release/samply
+        key: ${{ runner.os }}-samply-bin-${{ env.samply_branch }}
+
     - name: Build samply
+      if: steps.cache_samply_bin.outputs.cache-hit != 'true'
       shell: bash
       working-directory: samply
       run: cargo build --release
