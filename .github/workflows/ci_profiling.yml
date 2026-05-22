@@ -1,0 +1,106 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: esmini profiling
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+env:
+  esmini_repo: esmini/esmini
+  esmini_branch: dev
+  samply_repo: mstange/samply
+  samply_branch: bccaae62b8fbbdb69dd1352accad1b92a1502f29
+
+jobs:
+  profiling:
+    strategy:
+      matrix:
+        configuration: [RelWithDebInfo]
+        os: [ubuntu-22.04]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout esmini
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ env.esmini_repo }}
+        ref: ${{ env.esmini_branch }}
+        path: esmini
+        submodules: true
+        fetch-depth: 0
+
+    - name: Cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          esmini/externals/googletest
+          esmini/externals/osg
+          esmini/externals/osi
+          esmini/externals/sumo
+          esmini/resources/models
+        key: ${{ runner.os }}-external-resources
+
+    - name: CMake Configure - Ubuntu
+      if: runner.os == 'Linux'
+      shell: bash
+      working-directory: esmini
+      run: cmake . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_OSI=ON -DUSE_GTEST=OFF -DUSE_OSG=ON -DUSE_SUMO=OFF -DUSE_IMPLOT=OFF -DBUILD_EXAMPLES=OFF
+
+    - name: CMake Build
+      working-directory: esmini
+      run: cmake --build build --config ${{ matrix.configuration }} --target esmini -j 2
+
+    - name: Checkout samply
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ env.samply_repo }}
+        ref: ${{ env.samply_branch }}
+        submodules: false
+        fetch-depth: 0
+        path: samply
+
+    - name: Build samply
+      shell: bash
+      working-directory: samply
+      run: cargo build --release
+
+    - name: Configure linux to allow perf event
+      shell: bash
+      run: echo '-1' | sudo tee /proc/sys/kernel/perf_event_paranoid
+
+    - name: Run profiling
+      shell: bash
+      working-directory: samply
+      run: ./target/release/samply record --presymbolicate --symbol-dir=../esmini/build/EnvironmentSimulator/Applications/esmini ../esmini/build/EnvironmentSimulator/Applications/esmini/esmini --osc ../esmini/resources/xosc/highway_merge.xosc --fixed_timestep 0.025 --osi_file ../esmini/ground_truth.gt --record ../esmini/sim.dat --headless
+
+    - name: Publish profiling results
+      id: publish_profile
+      shell: bash
+      working-directory: samply
+      run: |
+        JWT_RESPONSE=$(curl -s -X POST --data-binary @prof.json.gz -H 'Accept: application/vnd.firefox-profiler+json;version=1.0' https://api.profiler.firefox.com/compressed-store)
+        PROFILE_TOKEN=$(echo "$JWT_RESPONSE" | cut -d'.' -f2 | base64 --decode 2>/dev/null | grep -oP '"profileToken":"\K[^"]+')
+        LINK="https://profiler.firefox.com/public/$PROFILE_TOKEN"
+        echo "profile_link=$LINK" >> "$GITHUB_OUTPUT"
+
+    - name: Upload Firefox profile artifact
+      id: upload_profile
+      uses: actions/upload-artifact@v4
+      with:
+        name: firefox-profile
+        path: samply/prof.json.gz
+        if-no-files-found: error
+
+    - name: Publish links
+      shell: bash
+      run: |
+        cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+        ## Profiling links
+        - [Open in Firefox Profiler](${{ steps.publish_profile.outputs.profile_link }})
+        - [Download uploaded profile artifact](${{ steps.upload_profile.outputs.artifact-url }})
+        - [Run artifacts page](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        EOF
+
