@@ -167,7 +167,7 @@ fi
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_CXX_STANDARD=17" \
     "-DCMAKE_BUILD_TYPE=${BUILD_TYPE}" \
-    "-DCMAKE_MSVC_RUNTIME_LIBRARY=$<IF:$<CONFIG:Debug>,MultiThreadedDebugDLL,MultiThreadedDLL>"
+    "-DCMAKE_MSVC_RUNTIME_LIBRARY=$<IF:$<CONFIG:Debug>,MultiThreadedDebugDLL,MultiThreadedDLL>" \
     "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON" \
     "-Dprotobuf_MODULE_COMPATIBLE=ON" \
     "-DProtobuf_DIR=${PROTO_CMAKE_DIR}" \
