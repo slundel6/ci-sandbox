@@ -4,7 +4,7 @@ name: Build Protobuf on multiple platforms
 
 on:
   push:
-    branches: ['stable_state']
+    branches: ['main']
 
 jobs:
   build:
