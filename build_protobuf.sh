@@ -17,10 +17,11 @@ if [[ "${PROTOBUF_SHARED}" != "ON" && "${PROTOBUF_SHARED}" != "OFF" ]]; then
     exit 1
 fi
 
-ABSL_SHARED="${PROTOBUF_SHARED}"
+ABSL_SHARED="OFF"
 ABSL_WINDOWS_EXPORT_ALL_SYMBOLS_FLAG=""
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]] && [[ "${ABSL_SHARED}" == "ON" ]]; then
     ABSL_WINDOWS_EXPORT_ALL_SYMBOLS_FLAG="-DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON"
+    ABSL_SHARED="ON" # Windows needs to link shared abseil
 fi
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
@@ -40,6 +41,7 @@ elif [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
     GENERATOR_ARGUMENTS=""
 else
     echo Unknown OSTYPE: $OSTYPE
+    exit 1
 fi
 
 ROOT_DIR=$(pwd)
@@ -69,7 +71,14 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
 
 cmake --build build --config "${BUILD_TYPE}" "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
-rm "${DEPS_CMAKE_PREFIX}/lib/libz.so"*
+
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "linux-gnu"* ]]; then
+    rm "${DEPS_CMAKE_PREFIX}/lib/libz.so"*
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    rm "${DEPS_CMAKE_PREFIX}/lib/libz*.dylib"*
+else
+    rm "${DEPS_CMAKE_PREFIX}/lib/zlib*."* # Windows names?
+fi
 cd "${ROOT_DIR}/osi-dependencies"
 
 
@@ -96,6 +105,19 @@ cd "${ROOT_DIR}/osi-dependencies"
 # build and install protobuf
 git clone --depth 1 --branch v29.3 https://github.com/protocolbuffers/protobuf.git
 cd protobuf
+# Always build static utf8-validity lib
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux & Windows (GNU sed syntax)
+    sed -i 's/add_library.*utf8_validity.*utf8_validity.cc.*/add_library (utf8_validity STATIC utf8_validity.cc utf8_range.c)/' third_party/utf8_range/CMakeLists.txt
+    sed -i 's/add_library[[:space:]]*(utf8_range.*/add_library (utf8_range STATIC/' third_party/utf8_range/CMakeLists.txt
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS (BSD sed syntax - requires the '')
+    sed -i '' 's/add_library.*utf8_validity.*utf8_validity.cc.*/add_library (utf8_validity STATIC utf8_validity.cc utf8_range.c)/' third_party/utf8_range/CMakeLists.txt
+    sed -i '' 's/add_library[[:space:]]*(utf8_range.*/add_library (utf8_range STATIC/' third_party/utf8_range/CMakeLists.txt
+else
+    echo "Unknown OS type: $OSTYPE"
+    exit 1
+fi
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
     -DCMAKE_INSTALL_PREFIX="${DEPS_CMAKE_PREFIX}" \
 	-DCMAKE_CXX_STANDARD=17 \
