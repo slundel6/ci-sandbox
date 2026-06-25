@@ -19,7 +19,7 @@ fi
 
 ABSL_SHARED="OFF"
 ABSL_WINDOWS_EXPORT_ALL_SYMBOLS_FLAG=""
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]] && [[ "${ABSL_SHARED}" == "ON" ]]; then
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]] && [[ "${PROTOBUF_SHARED}" == "ON" ]]; then
     ABSL_WINDOWS_EXPORT_ALL_SYMBOLS_FLAG="-DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON"
     ABSL_SHARED="ON" # Windows needs to link shared abseil
 fi
@@ -77,7 +77,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     rm "${DEPS_CMAKE_PREFIX}/lib/libz"*.dylib
 else # Windows
-    rm "${DEPS_CMAKE_PREFIX}/lib/zlib.lib"
+    rm "${DEPS_CMAKE_PREFIX}/lib/zlib"*.lib
 fi
 cd "${ROOT_DIR}/osi-dependencies"
 
@@ -192,9 +192,10 @@ else
     echo "Unknown OSTYPE: $OSTYPE"
 fi
 
-STAGING_DIR_LIB="${STAGING_DIR}/${LIB_DIR_NAME}/${BUILD_TYPE,}"
+BUILD_TYPE_LOWER=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+STAGING_DIR_LIB="${STAGING_DIR}/${LIB_DIR_NAME}/${BUILD_TYPE_LOWER}"
 STAGING_DIR_INCLUDE="${STAGING_DIR}/include"
-STAGING_DIR_DEPENDENCIES_LIB="${STAGING_DIR}/deps/${BUILD_TYPE,}"
+STAGING_DIR_DEPENDENCIES_LIB="${STAGING_DIR}/deps/${BUILD_TYPE_LOWER}"
 
 mkdir -p "$STAGING_DIR_LIB"
 mkdir -p "$STAGING_DIR_INCLUDE"
