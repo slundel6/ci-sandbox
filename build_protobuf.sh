@@ -134,6 +134,7 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
 
 cmake --build cmake-out --config "${BUILD_TYPE}" --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install cmake-out --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
+rm "${DEPS_CMAKE_PREFIX}/lib/"*protobuf-lite*
 cd "$ROOT_DIR"
 
 # build and install osi
@@ -232,34 +233,36 @@ fi
 ## Copy libs
 echo "- Copying all libs"
 if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
-    DYN_EXT="so"
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        DYN_EXT="dylib"
-    fi
 
+    # Dependency libs (abseil, upb, utf8 and libz), always .a
     cp "${DEPS_INSTALL_FOLDER}/lib/libabsl_ar.a" "${DEPS_INSTALL_FOLDER}/lib/libupb"*.a "${DEPS_INSTALL_FOLDER}/lib/libutf8"*.a "${DEPS_INSTALL_FOLDER}/lib/libz.a" "${STAGING_DIR_DEPENDENCIES_LIB}"
 
 
-    # Dependency libs (abseil, upb, utf8 and libz), always .a
-    if [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Release" ]]; then
-        # Static release libs
+    if [[ "$PROTOBUF_SHARED" == "OFF" ]]; then
+        # Static libs
         cp "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface_pic.a" "$STAGING_DIR_LIB"
-        cp "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.a" "$STAGING_DIR_LIB"
-    elif [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Debug" ]]; then
-        # Static debug libs
-        cp "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface_pic.a" "$STAGING_DIR_LIB"
-        cp "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.a" "$STAGING_DIR_LIB"
-    elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Release" ]]; then
-        # Dynamic release libs
-        cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface.${DYN_EXT}"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf"*."${DYN_EXT}" "$STAGING_DIR_LIB"
-    elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Debug" ]]; then
-        # Dynamic release libs
-        cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface.${DYN_EXT}"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd"*."${DYN_EXT}" "$STAGING_DIR_LIB"
+        cp "${DEPS_INSTALL_FOLDER}/lib/libprotobuf"*.a "$STAGING_DIR_LIB"
     else
-        echo "Unknown combination of PROTOBUF_SHARED=$PROTOBUF_SHARED and BUILD_TYPE=${BUILD_TYPE}"
+        # Dynamic libs
+        cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface.so"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf"*.so* "$STAGING_DIR_LIB"
     fi
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+
+    # Dependency libs (abseil, upb, utf8 and libz), always .a
+    cp "${DEPS_INSTALL_FOLDER}/lib/libabsl_ar.a" "${DEPS_INSTALL_FOLDER}/lib/libupb"*.a "${DEPS_INSTALL_FOLDER}/lib/libutf8"*.a "${DEPS_INSTALL_FOLDER}/lib/libz.a" "${STAGING_DIR_DEPENDENCIES_LIB}"
+
+
+    if [[ "$PROTOBUF_SHARED" == "OFF" ]]; then
+        # Static libs
+        cp "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface_pic.a" "$STAGING_DIR_LIB"
+        cp "${DEPS_INSTALL_FOLDER}/lib/libprotobuf"*.a "$STAGING_DIR_LIB"
+    else
+        # Dynamic libs
+        cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface"*.dylib "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf"*.dylib "$STAGING_DIR_LIB"
+    fi
+
 elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     # Dependency libs (abseil, upb, utf8 and libz), always .a
     cp "${DEPS_INSTALL_FOLDER}/lib/absl_ar.lib" "${DEPS_INSTALL_FOLDER}/lib/utf8"*.lib "${DEPS_INSTALL_FOLDER}/lib/zlibstatic.lib" "${DEPS_INSTALL_FOLDER}/lib/upb"*.lib "${STAGING_DIR_DEPENDENCIES_LIB}"
