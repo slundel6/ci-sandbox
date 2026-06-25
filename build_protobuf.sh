@@ -72,12 +72,12 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
 cmake --build build --config "${BUILD_TYPE}" "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
 
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "linux-gnu"* ]]; then
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     rm "${DEPS_CMAKE_PREFIX}/lib/libz.so"*
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-    rm "${DEPS_CMAKE_PREFIX}/lib/libz*.dylib"*
+    rm "${DEPS_CMAKE_PREFIX}/lib/libz"*.dylib
 else # Windows
-    rm "${DEPS_CMAKE_PREFIX}/lib/zlib.lib"* # Windows names?
+    rm "${DEPS_CMAKE_PREFIX}/lib/zlib.lib"
 fi
 cd "${ROOT_DIR}/osi-dependencies"
 
@@ -176,8 +176,6 @@ cmake --install build --config "${BUILD_TYPE}"
 cd "$ROOT_DIR"
 
 ### Staging
-mkdir -p staging && cd staging
-
 if [[ "$PROTOBUF_SHARED" == "OFF" ]]; then
     LIB_DIR_NAME="lib"
 else
@@ -253,11 +251,11 @@ if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
     elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Release" ]]; then
         # Dynamic release libs
         cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface.${DYN_EXT}"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.${DYN_EXT}"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf"*."${DYN_EXT}" "$STAGING_DIR_LIB"
     elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Debug" ]]; then
         # Dynamic release libs
         cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface.${DYN_EXT}"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.${DYN_EXT}"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd"*."${DYN_EXT}" "$STAGING_DIR_LIB"
     else
         echo "Unknown combination of PROTOBUF_SHARED=$PROTOBUF_SHARED and BUILD_TYPE=${BUILD_TYPE}"
     fi
