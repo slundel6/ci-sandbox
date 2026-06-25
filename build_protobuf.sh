@@ -134,7 +134,6 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
 
 cmake --build cmake-out --config "${BUILD_TYPE}" --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install cmake-out --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
-rm "${DEPS_CMAKE_PREFIX}/lib/"*protobuf-lite*
 cd "$ROOT_DIR"
 
 # build and install osi
@@ -150,7 +149,8 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     OSI_CXX_FLAGS_RELEASE="-EHsc -I${ABSL_INCLUDE_PATH}"
     OSI_CXX_FLAGS_DEBUG="-EHsc -I${ABSL_INCLUDE_PATH}"
     if [[ "${PROTOBUF_SHARED}" == "ON" ]]; then
-        OSI_CXX_FLAGS="${OSI_CXX_FLAGS} -DPROTOBUF_USE_DLLS -DABSL_CONSUME_DLL"
+        OSI_CXX_FLAGS_RELEASE="${OSI_CXX_FLAGS_RELEASE} -DPROTOBUF_USE_DLLS -DABSL_CONSUME_DLL"
+        OSI_CXX_FLAGS_DEBUG="${OSI_CXX_FLAGS_DEBUG} -DPROTOBUF_USE_DLLS -DABSL_CONSUME_DLL"
     fi
 else
     PROTO_CMAKE_DIR="${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf"
@@ -163,6 +163,7 @@ fi
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_CXX_STANDARD=17" \
     "-DCMAKE_BUILD_TYPE=${BUILD_TYPE}" \
+    "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$([[ ${BUILD_TYPE} == 'Debug' ]] && echo 'DebugDLL' || echo 'DLL')" \
     "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON" \
     "-Dprotobuf_MODULE_COMPATIBLE=ON" \
     "-DProtobuf_DIR=${PROTO_CMAKE_DIR}" \
@@ -229,6 +230,9 @@ else
         lib.exe /OUT:"${DEPS_INSTALL_FOLDER}/lib/absl_ar.lib" "${libs[@]}"
     fi
 fi
+
+## Remove useless protobuf-lite to prevent copying of it
+rm "${DEPS_CMAKE_PREFIX}/lib/"*protobuf-lite*
 
 ## Copy libs
 echo "- Copying all libs"
