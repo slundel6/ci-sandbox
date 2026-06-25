@@ -81,6 +81,7 @@ else # Windows
         rm "${DEPS_CMAKE_PREFIX}/lib/zlib.lib"
     else # Debug
         rm "${DEPS_CMAKE_PREFIX}/lib/zlibd.lib"
+    fi
 fi
 cd "${ROOT_DIR}/osi-dependencies"
 
