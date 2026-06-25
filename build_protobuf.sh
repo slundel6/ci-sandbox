@@ -76,8 +76,8 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "linux-gnu"* 
     rm "${DEPS_CMAKE_PREFIX}/lib/libz.so"*
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     rm "${DEPS_CMAKE_PREFIX}/lib/libz*.dylib"*
-else
-    rm "${DEPS_CMAKE_PREFIX}/lib/zlib*."* # Windows names?
+else # Windows
+    rm "${DEPS_CMAKE_PREFIX}/lib/zlib.lib"* # Windows names?
 fi
 cd "${ROOT_DIR}/osi-dependencies"
 
@@ -105,7 +105,9 @@ cd "${ROOT_DIR}/osi-dependencies"
 # build and install protobuf
 git clone --depth 1 --branch v29.3 https://github.com/protocolbuffers/protobuf.git
 cd protobuf
-# Always build static utf8-validity lib
+
+echo "Modifying third_party/utf8_range/CMakeLists.txt to always build static libs"
+# Always build static utf8 libs instead of relying on protobuf_BUILD_SHARED_LIBS flag
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "linux-gnu"* ]]; then
     # Linux & Windows (GNU sed syntax)
     sed -i 's/add_library.*utf8_validity.*utf8_validity.cc.*/add_library (utf8_validity STATIC utf8_validity.cc utf8_range.c)/' third_party/utf8_range/CMakeLists.txt
@@ -118,6 +120,7 @@ else
     echo "Unknown OS type: $OSTYPE"
     exit 1
 fi
+
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
     -DCMAKE_INSTALL_PREFIX="${DEPS_CMAKE_PREFIX}" \
 	-DCMAKE_CXX_STANDARD=17 \
@@ -200,40 +203,59 @@ mkdir -p "$STAGING_DIR_INCLUDE"
 mkdir -p "$STAGING_DIR_DEPENDENCIES_LIB"
 
 ## Copy include files
+echo "- Copying dependency- and osi headers to ${STAGING_DIR_INCLUDE}"
 cp -r "${DEPS_INSTALL_FOLDER}/include/"* "$STAGING_DIR_INCLUDE"
 cp -r "${OSI_INSTALL_FOLDER}/include/osi3/"* "$STAGING_DIR_INCLUDE"
 
+## Bundle all abseil static libs to one lib
+echo "- Bundle abseil static libs to one lib"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS: Use native libtool (handles wildcards out-of-the-box)
+    mac_libs=( "${DEPS_INSTALL_FOLDER}/lib/libabsl_"*.a )
+    libtool -static -o "${DEPS_INSTALL_FOLDER}/lib/libabsl_ar.a" "${mac_libs[@]}"
+
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    (
+      echo "CREATE ${DEPS_INSTALL_FOLDER}/lib/libabsl_ar.a"
+      for lib in "${DEPS_INSTALL_FOLDER}/lib/libabsl_"*.a; do
+        echo "ADDLIB $lib"
+      done
+      echo "SAVE"
+      echo "END"
+    ) | ar -M
+else
+    if command -v lib.exe &> /dev/null; then
+        libs=( "${DEPS_INSTALL_FOLDER}/lib/absl_"*.lib )
+        lib.exe /OUT:"${DEPS_INSTALL_FOLDER}/lib/absl_ar.lib" "${libs[@]}"
+    fi
+fi
+
 ## Copy libs
+echo "- Copying all libs"
 if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
     DYN_EXT="so"
     if [[ "$OSTYPE" == "darwin"* ]]; then
         DYN_EXT="dylib"
     fi
 
-    if [[ "$PROTOBUF_SHARED" == "OFF" ]]; then
-        if [[ "$BUILD_TYPE" == "Release" ]]; then
-            cp "${DEPS_INSTALL_FOLDER}/lib/libabsl_"*.a "${DEPS_INSTALL_FOLDER}/lib/libupb.a" "${DEPS_INSTALL_FOLDER}/lib/libutf8"*.a "${DEPS_INSTALL_FOLDER}/lib/libz.a" "${STAGING_DIR_DEPENDENCIES_LIB}"
-        else
-            cp "${DEPS_INSTALL_FOLDER}/lib/libabsl_"*.a "${DEPS_INSTALL_FOLDER}/lib/libupbd.a" "${DEPS_INSTALL_FOLDER}/lib/libutf8"*.a "${DEPS_INSTALL_FOLDER}/lib/libz.a" "${STAGING_DIR_DEPENDENCIES_LIB}"
-        fi
-    fi
+    cp "${DEPS_INSTALL_FOLDER}/lib/libabsl_ar.a" "${DEPS_INSTALL_FOLDER}/lib/libupb"*.a "${DEPS_INSTALL_FOLDER}/lib/libutf8"*.a "${DEPS_INSTALL_FOLDER}/lib/libz.a" "${STAGING_DIR_DEPENDENCIES_LIB}"
 
 
     # Dependency libs (abseil, upb, utf8 and libz), always .a
     if [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Release" ]]; then
-        # Linux static release libs
+        # Static release libs
         cp "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface_pic.a" "$STAGING_DIR_LIB"
         cp "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.a" "$STAGING_DIR_LIB"
     elif [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Debug" ]]; then
-        # Linux static debug libs
+        # Static debug libs
         cp "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface_pic.a" "$STAGING_DIR_LIB"
         cp "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.a" "$STAGING_DIR_LIB"
     elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Release" ]]; then
-        # Linux dynamic release libs
+        # Dynamic release libs
         cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface.${DYN_EXT}"* "$STAGING_DIR_LIB"
         cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.${DYN_EXT}"* "$STAGING_DIR_LIB"
     elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Debug" ]]; then
-        # Linux dynamic release libs
+        # Dynamic release libs
         cp -P "${OSI_INSTALL_FOLDER}/lib/libopen_simulation_interface.${DYN_EXT}"* "$STAGING_DIR_LIB"
         cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.${DYN_EXT}"* "$STAGING_DIR_LIB"
     else
@@ -241,9 +263,7 @@ if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
     fi
 elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     # Dependency libs (abseil, upb, utf8 and libz), always .a
-    if [[ "$PROTOBUF_SHARED" == "OFF" ]]; then
-        cp "${DEPS_INSTALL_FOLDER}/lib/absl_"*.lib "${DEPS_INSTALL_FOLDER}/lib/utf8"*.lib "${STAGING_DIR_DEPENDENCIES_LIB}"
-    fi
+    cp "${DEPS_INSTALL_FOLDER}/lib/absl_ar.lib" "${DEPS_INSTALL_FOLDER}/lib/utf8"*.lib "${DEPS_INSTALL_FOLDER}/lib/zlibstatic.lib" "${DEPS_INSTALL_FOLDER}/lib/upb"*.lib "${STAGING_DIR_DEPENDENCIES_LIB}"
 
     if [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Release" ]]; then
         # Windows static release libs
@@ -275,7 +295,3 @@ elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
 else
     echo "Unexpected OSTYPE $OSTYPE"
 fi
-
-
-
-

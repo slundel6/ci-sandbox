@@ -4,7 +4,7 @@ name: esmini profiling
 
 on:
   push:
-    branches: ['**']
+    branches: ['profiling']
   workflow_dispatch:
 
 env:

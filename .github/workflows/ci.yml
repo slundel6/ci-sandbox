@@ -21,6 +21,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - uses: ./.github/actions/setup_tools_shared
+
     - name: Build protobuf
       id: build_step
       continue-on-error: true
@@ -34,6 +36,24 @@ jobs:
     # - name: Debugging with tmate
     #   if: ${{ always() && matrix.os == 'windows-2022' && steps.build_step.outcome == 'failure' }}
     #   uses: mxschmitt/action-tmate@v3
+
+    - name: Bundle platform package
+      shell: bash
+      run: |
+        case "${{ matrix.os }}" in
+          ubuntu-22.04) ARCHIVE_NAME="osi-linux.tar.xz" ; FOLDER_NAME="linux" ;;
+          macos-14)    ARCHIVE_NAME="osi-macos.tar.xz" ; FOLDER_NAME="mac" ;;
+          windows-2022) ARCHIVE_NAME="osi-windows.tar.xz" ; FOLDER_NAME="v10" ;;
+        esac
+
+        tar -cJvf "$ARCHIVE_NAME" "$FOLDER_NAME"
+        echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ env.ARCHIVE_NAME }}
+        path: ${{ env.ARCHIVE_NAME }}
 
     - name: Fail job if build failed
       if: ${{ steps.build_step.outcome == 'failure' }}
