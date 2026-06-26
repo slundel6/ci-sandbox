@@ -268,7 +268,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 
 else # Windows
     # Dependency libs (abseil, upb, utf8 and libz), always .a
-    cp "${DEPS_INSTALL_FOLDER}/lib/absl_"*.lib "${DEPS_INSTALL_FOLDER}/lib/utf8"*.lib "${DEPS_INSTALL_FOLDER}/lib/zlibstatic.lib" "${DEPS_INSTALL_FOLDER}/lib/libupb"*.lib "${STAGING_DIR_DEPENDENCIES_LIB}"
+    cp "${DEPS_INSTALL_FOLDER}/lib/absl_"*.lib "${DEPS_INSTALL_FOLDER}/lib/utf8"*.lib "${DEPS_INSTALL_FOLDER}/lib/zlibstatic"*.lib "${DEPS_INSTALL_FOLDER}/lib/libupb"*.lib "${STAGING_DIR_DEPENDENCIES_LIB}"
 
     if [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Release" ]]; then
         # Windows static release libs
