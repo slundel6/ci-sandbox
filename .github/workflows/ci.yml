@@ -33,7 +33,7 @@ jobs:
       env:
         BUILD_TYPE: ${{ matrix.build_type }}
         PROTOBUF_SHARED: ${{ matrix.protobuf_shared }}
-      run: run: ${{ matrix.os == 'ubuntu-22.04' && 'xvfb-run' || '' }} ./build_protobuf.sh
+      run: ${{ matrix.os == 'ubuntu-22.04' && 'xvfb-run ' || '' }}./build_protobuf.sh
 
     - name: Bundle platform package
       shell: bash
