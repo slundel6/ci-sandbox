@@ -150,8 +150,8 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     PROTO_CMAKE_DIR=$(cygpath -m "${DEPS_INSTALL_FOLDER}/lib/cmake/protobuf")
     OSI_INSTALL_PREFIX=$(cygpath -m "${OSI_INSTALL_FOLDER}")
     ABSL_INCLUDE_PATH=$(cygpath -m "${DEPS_INSTALL_FOLDER}/include")
-    OSI_CXX_FLAGS_RELEASE="-EHsc -I${ABSL_INCLUDE_PATH}"
-    OSI_CXX_FLAGS_DEBUG="-EHsc -I${ABSL_INCLUDE_PATH}"
+    OSI_CXX_FLAGS_RELEASE="-EHsc -MD -DNDEBUG -O2 -I${ABSL_INCLUDE_PATH}"
+    OSI_CXX_FLAGS_DEBUG="-EHsc -MDd -Od -Z7 -I${ABSL_INCLUDE_PATH}"
     if [[ "${PROTOBUF_SHARED}" == "ON" ]]; then
         OSI_CXX_FLAGS_RELEASE="${OSI_CXX_FLAGS_RELEASE} -DPROTOBUF_USE_DLLS -DABSL_CONSUME_DLL"
         OSI_CXX_FLAGS_DEBUG="${OSI_CXX_FLAGS_DEBUG} -DPROTOBUF_USE_DLLS -DABSL_CONSUME_DLL"
@@ -167,7 +167,6 @@ fi
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_CXX_STANDARD=17" \
     "-DCMAKE_BUILD_TYPE=${BUILD_TYPE}" \
-    "-DCMAKE_MSVC_RUNTIME_LIBRARY=$<IF:$<CONFIG:Debug>,MultiThreadedDebugDLL,MultiThreadedDLL>" \
     "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON" \
     "-Dprotobuf_MODULE_COMPATIBLE=ON" \
     "-DProtobuf_DIR=${PROTO_CMAKE_DIR}" \
@@ -273,7 +272,7 @@ else # Windows
 
     if [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Release" ]]; then
         # Windows static release libs
-        cp "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface_static.lib" "$STAGING_DIR_LIB"
+        cp "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface_pic.lib" "$STAGING_DIR_LIB"
         cp "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.lib" "$STAGING_DIR_LIB"
     elif [[ "$PROTOBUF_SHARED" == "OFF" && "${BUILD_TYPE}" == "Debug" ]]; then
         # Windows static debug libs
@@ -281,20 +280,20 @@ else # Windows
         cp "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.lib" "$STAGING_DIR_LIB"
     elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Release" ]]; then
         # Windows dynamic release libs
-        cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.lib"* "$STAGING_DIR_LIB"
+        cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface_pic.lib"* "$STAGING_DIR_LIB"
         cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.dll"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.lib"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.dll"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.lib"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.dll"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.lib" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.dll" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.lib" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.dll" "$STAGING_DIR_LIB"
     elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Debug" ]]; then
         # Windows dynamic release libs
         cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.lib"* "$STAGING_DIR_LIB"
         cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.dll"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.lib"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.dll"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.lib"* "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.dll"* "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.lib" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.dll" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.lib" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.dll" "$STAGING_DIR_LIB"
     else
         echo "Unknown combination of PROTOBUF_SHARED=$PROTOBUF_SHARED and BUILD_TYPE=${BUILD_TYPE}"
     fi
