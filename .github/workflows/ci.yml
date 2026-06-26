@@ -72,10 +72,33 @@ jobs:
         with:
           path: staging
 
+      - name: Merge platform packages
+        shell: bash
+        run: |
+          mkdir -p release-assets/linux release-assets/macos release-assets/windows
+
+          while IFS= read -r archive; do
+            case "$(basename "$archive")" in
+              osi-linux-*.tar.xz)
+                tar -xJf "$archive" -C release-assets/linux
+                ;;
+              osi-macos-*.tar.xz)
+                tar -xJf "$archive" -C release-assets/macos
+                ;;
+              osi-windows-*.tar.xz)
+                tar -xJf "$archive" -C release-assets/windows
+                ;;
+            esac
+          done < <(find staging -type f -name '*.tar.xz' | sort)
+
+          tar -cJvf release-assets/osi-linux.tar.xz -C release-assets/linux linux
+          tar -cJvf release-assets/osi-macos.tar.xz -C release-assets/macos mac
+          tar -cJvf release-assets/osi-windows.tar.xz -C release-assets/windows v10
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: "${{ github.ref_name }}"
           body: 'Build for ${{ github.ref_name }} containing debug, release, static and dynamic files per platform'
-          files: staging/**/*.tar.xz
+          files: release-assets/osi-*.tar.xz
