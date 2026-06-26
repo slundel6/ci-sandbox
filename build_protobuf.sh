@@ -283,17 +283,17 @@ else # Windows
         cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface_pic.lib"* "$STAGING_DIR_LIB"
         cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.dll"* "$STAGING_DIR_LIB"
         cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.lib" "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobuf.dll" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/bin/libprotobuf.dll" "$STAGING_DIR_LIB"
         cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.lib" "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.dll" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/bin/abseil_dll.dll" "$STAGING_DIR_LIB"
     elif [[ "$PROTOBUF_SHARED" == "ON" && "${BUILD_TYPE}" == "Debug" ]]; then
         # Windows dynamic release libs
         cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.lib"* "$STAGING_DIR_LIB"
         cp -P "${OSI_INSTALL_FOLDER}/lib/open_simulation_interface.dll"* "$STAGING_DIR_LIB"
         cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.lib" "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/libprotobufd.dll" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/bin/libprotobufd.dll" "$STAGING_DIR_LIB"
         cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.lib" "$STAGING_DIR_LIB"
-        cp -P "${DEPS_INSTALL_FOLDER}/lib/abseil_dll.dll" "$STAGING_DIR_LIB"
+        cp -P "${DEPS_INSTALL_FOLDER}/bin/abseil_dll.dll" "$STAGING_DIR_LIB"
     else
         echo "Unknown combination of PROTOBUF_SHARED=$PROTOBUF_SHARED and BUILD_TYPE=${BUILD_TYPE}"
     fi
