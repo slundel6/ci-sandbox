@@ -24,6 +24,7 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]] && [[ "${PROTOBUF_SHARED}"
     ABSL_SHARED="ON" # Windows needs to link shared abseil
 fi
 
+OSX_ARCH=""
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     # Parallel build argument
     BUILD_PARALLEL_ARGS=(--parallel "${BUILD_JOBS}")
@@ -39,6 +40,9 @@ elif [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
     # Unix Makefiles (for Ubuntu and other Linux systems)
     GENERATOR=("Unix Makefiles")
     GENERATOR_ARGUMENTS=""
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        OSX_ARCH="-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+    fi
 else
     echo Unknown OSTYPE: $OSTYPE
     exit 1
@@ -67,7 +71,8 @@ mkdir build
 cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     -DCMAKE_INSTALL_PREFIX="${DEPS_CMAKE_PREFIX}" \
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
-    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    ${OSX_ARCH:+"${OSX_ARCH}"}
 
 cmake --build build --config "${BUILD_TYPE}" "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
@@ -100,7 +105,8 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
 	-DABSL_BUILD_TESTING=OFF \
 	-DABSL_USE_GOOGLETEST_HEAD=OFF \
 	-DABSL_MSVC_STATIC_RUNTIME=OFF \
-	-DABSL_PROPAGATE_CXX_STD=ON
+	-DABSL_PROPAGATE_CXX_STD=ON \
+    ${OSX_ARCH:+"${OSX_ARCH}"}
 
 cmake --build build --config "${BUILD_TYPE}" "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
@@ -134,7 +140,8 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B cmake-out \
     -Dprotobuf_MSVC_STATIC_RUNTIME=OFF \
 	-Dprotobuf_ABSL_PROVIDER="package" \
     -DCMAKE_PREFIX_PATH="${DEPS_CMAKE_PREFIX}" \
-    -Dprotobuf_BUILD_SHARED_LIBS="${PROTOBUF_SHARED}"
+    -Dprotobuf_BUILD_SHARED_LIBS="${PROTOBUF_SHARED}" \
+    ${OSX_ARCH:+"${OSX_ARCH}"}
 
 cmake --build cmake-out --config "${BUILD_TYPE}" --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install cmake-out --config "${BUILD_TYPE}" --prefix "${DEPS_CMAKE_PREFIX}"
@@ -173,7 +180,8 @@ cmake -G "${GENERATOR[@]}" ${GENERATOR_ARGUMENTS} -S . -B build \
     "-DCMAKE_PREFIX_PATH=${DEPS_CMAKE_PREFIX}" \
     "-DCMAKE_CXX_FLAGS_RELEASE=${OSI_CXX_FLAGS_RELEASE}" \
     "-DCMAKE_CXX_FLAGS_DEBUG=${OSI_CXX_FLAGS_DEBUG}" \
-    "-DCMAKE_INSTALL_PREFIX=${OSI_INSTALL_PREFIX}"
+    "-DCMAKE_INSTALL_PREFIX=${OSI_INSTALL_PREFIX}" \
+    ${OSX_ARCH:+"${OSX_ARCH}"}
 
 cmake --build build --config "${BUILD_TYPE}" --clean-first "${BUILD_PARALLEL_ARGS[@]}"
 cmake --install build --config "${BUILD_TYPE}"
